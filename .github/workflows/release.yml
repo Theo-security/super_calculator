@@ -1,42 +1,49 @@
-name: Release Workflow
+name: Release
 
 on:
   push:
     tags:
-      - '*'
+      - '*' #
 
 jobs:
-  build-release:
+  release:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.19'
 
-      - name: Install goreleaser
-        run: |
-          curl -sL https://install.goreleaser.com/github.com/goreleaser/goreleaser.sh | bash
+      - name: Install dependencies
+        run: go mod tidy
 
-      - name: Run goreleaser
-        run: goreleaser release --rm-dist
+      - name: Build the project
+        run: go build -o main ./main.go
+
+      - name: Clean up
+        run: git clean -fd
+
+      - name: Reset git state
+        run: git reset --hard
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v4
+        with:
+          version: latest
+          args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
-  build-docker-image:
-    needs: build-release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to Docker Hub
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/calculator:${{ github.ref_name }} .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/calculator:${{ github.ref_name }}
+          docker buildx build . -f Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/super_calculator:${{ github.ref_name }}
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/super_calculator:${{ github.ref_name }}
