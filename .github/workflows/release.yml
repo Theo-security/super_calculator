@@ -45,5 +45,5 @@ jobs:
       - name: Build Docker image
         run: |
           docker buildx build . -f Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/super_calculator:${{ github.ref_name }}
-          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/super_calculator:${{ github.ref_name }}
